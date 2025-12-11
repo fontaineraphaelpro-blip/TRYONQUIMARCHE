@@ -1,0 +1,21 @@
+# Fichiers et dossiers généraux à ignorer
+.DS_Store
+.vscode/
+.env
+
+# Fichiers temporaires Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Dépendances gérées (à ne pas uploader manuellement)
+/venv
+/env
+
+# Fichiers de log, de test ou d'upload
+*.log
+/tests/
+
+# Fichiers de données ou de session générés localement
+/uploads/
+/results/
