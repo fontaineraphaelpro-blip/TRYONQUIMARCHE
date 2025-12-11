@@ -21,7 +21,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # Cloudinary lit les identifiants depuis l'environnement
 cloudinary.config(
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
+    cloud_name = "tryon_upload"
     api_key = os.getenv("CLOUDINARY_API_KEY"),
     api_secret = os.getenv("CLOUDINARY_API_SECRET")
 )
@@ -146,3 +146,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=3000)
+
