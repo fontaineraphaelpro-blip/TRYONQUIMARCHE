@@ -1,0 +1,171 @@
+/* --- RESET --- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-main: #1f2937;
+    --text-muted: #9ca3af;
+    --border-radius: 24px;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; width: 100%; overflow-x: hidden; padding: 20px;
+}
+
+.main-container { width: 100%; max-width: 1100px; margin: auto; }
+
+/* HEADER */
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.logo { font-size: 1.5rem; font-weight: 800; color: #111; letter-spacing: -0.5px; }
+.header-actions { display: flex; gap: 15px; align-items: center; }
+
+/* BOUTON RECHARGER */
+.buy-btn {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: white; border: none; padding: 10px 24px; border-radius: 50px;
+    font-weight: 700; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.35); transition: 0.3s;
+}
+.buy-btn:hover { transform: translateY(-2px); }
+
+/* GRID PRINCIPALE (PC) */
+.app-grid { display: grid; grid-template-columns: 40% 60%; gap: 25px; align-items: start; }
+.card { background: var(--card-bg); border-radius: var(--border-radius); padding: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); }
+h2 { font-size: 1.1rem; margin-bottom: 25px; color: #111; font-weight: 700; }
+
+/* INPUTS */
+.uploads-wrapper { display: flex; gap: 12px; margin-bottom: 25px; }
+.upload-box { flex: 1; min-width: 0; }
+.icon-header { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; margin-bottom: 10px; font-weight: 600; color: #64748b; }
+.preview-area {
+    width: 100%; aspect-ratio: 3/4; background: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; position: relative;
+}
+.preview-img { width: 100%; height: 100%; object-fit: cover; }
+.options-row { margin-bottom: 25px; }
+select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; font-family: inherit; font-size: 0.9rem; outline: none; }
+button#generateButton {
+    width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; padding: 16px; border-radius: 14px;
+    font-size: 1rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+}
+
+/* RESULTAT */
+.result-container {
+    background: #f8fafc; border-radius: 16px; min-height: 520px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #f1f5f9; padding: 10px;
+}
+#resultImage { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
+.download-btn {
+    background-color: #10b981; color: white; padding: 14px; border-radius: 12px;
+    text-decoration: none; font-weight: 600; margin-top: 20px; width: 80%; text-align: center;
+}
+
+/* LOADER */
+#loadingMessage { margin-top: 20px; text-align: center; }
+.spinner { width: 24px; height: 24px; margin: 0 auto; border: 3px solid rgba(99, 102, 241, 0.3); border-radius: 50%; border-top-color: var(--primary-color); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- MODALE (POPUP) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); z-index: 9999;
+    /* Important : Centrage Flex par défaut */
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px); padding: 20px;
+}
+
+.modal-content {
+    background: white; width: 100%; max-width: 850px; border-radius: 24px; padding: 40px;
+    text-align: center; position: relative; 
+    max-height: 85vh; /* Max 85% de l'écran */
+    overflow-y: auto; /* Scroll intérieur si besoin */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* LA CROIX (Fixe à l'écran) */
+.close-btn {
+    position: fixed; top: 20px; right: 20px; z-index: 10001;
+    width: 45px; height: 45px; background: white; border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2); color: #333; font-size: 28px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;
+}
+.close-btn:hover { background: #ef4444; color: white; }
+
+/* DESIGN DES PRIX (Stylé & Pro) */
+.pricing-grid { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+
+.pricing-card {
+    background: white; border: 1px solid #f1f5f9; border-radius: 24px; padding: 30px 20px;
+    width: 240px; position: relative; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.pricing-card:hover { transform: translateY(-8px); border-color: var(--primary-color); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+.pricing-card h3 { color: #64748b; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+.pricing-card .price { font-size: 2.5rem; font-weight: 800; color: #1e293b; margin: 10px 0 5px 0; letter-spacing: -1px; }
+.pricing-card .credits { background: #e0e7ff; color: var(--primary-color); font-weight: 700; font-size: 0.9rem; padding: 6px 14px; border-radius: 50px; margin-bottom: 20px; }
+
+.pricing-card button {
+    width: 100%; background: #f1f5f9; color: #334155; border: none; padding: 14px;
+    border-radius: 14px; font-weight: 700; cursor: pointer; transition: 0.2s;
+}
+.pricing-card button:hover { background: #e2e8f0; }
+
+/* Carte Populaire */
+.pricing-card.popular { border: 2px solid var(--primary-color); transform: scale(1.05); z-index: 2; box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.25); }
+.pricing-card.popular:hover { transform: scale(1.08); }
+.pricing-card.popular button { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; }
+.pricing-card .badge {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: #111; color: white; padding: 6px 16px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+}
+
+
+/* --- 📱 MOBILE FIX (LAYOUT HORIZONTAL) --- */
+@media (max-width: 850px) {
+    body { display: block; height: auto; padding: 15px; overflow-x: hidden; }
+    .main-container { margin: 0; width: 100%; }
+
+    header { flex-direction: column; gap: 15px; text-align: center; }
+    .header-actions { width: 100%; justify-content: center; }
+    h1 { font-size: 1.8rem !important; }
+
+    .app-grid { grid-template-columns: 1fr; gap: 20px; }
+    .uploads-wrapper { display: flex; gap: 10px; }
+
+    /* MODALE MOBILE */
+    .modal-overlay { align-items: flex-start; padding-top: 60px; } 
+    .modal-content { padding: 20px; max-height: 80vh; }
+
+    /* TRANSFORMATION DES CARTES EN LIGNES */
+    .pricing-grid { flex-direction: column; gap: 15px; }
+
+    .pricing-card {
+        width: 100%; margin-bottom: 0; padding: 20px;
+        flex-direction: row; /* Horizontal */
+        justify-content: space-between; align-items: center;
+        text-align: left;
+    }
+    .pricing-card.popular { transform: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .pricing-card.popular:hover { transform: none; }
+    .pricing-card .badge { display: none; } /* Cache le badge sur mobile */
+
+    /* Groupe texte à gauche */
+    .card-info { display: flex; flex-direction: column; align-items: flex-start; }
+
+    .pricing-card h3 { font-size: 0.8rem; margin-bottom: 2px; }
+    .pricing-card .price { font-size: 1.4rem; margin: 0; }
+    .pricing-card .credits { font-size: 0.75rem; padding: 0; background: none; color: #64748b; margin: 0; }
+
+    /* Bouton à droite */
+    .pricing-card button { width: auto; padding: 10px 20px; font-size: 0.9rem; }
+}

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StyleLab AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    
+    // Initialisation avec ton ID
+    fbq('init', '2165457157319732'); 
+    fbq('track', 'PageView');
+
+    // --- TRACKING INTELLIGENT DES VENTES ---
+    // Vérifie si le client revient de Stripe avec un succès
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+        // On récupère le nombre de crédits achetés pour deviner le prix
+        const credits = parseInt(urlParams.get('add_credits') || '0');
+        let value = 0;
+        
+        // On associe le prix au pack
+        if (credits === 10) value = 4.99;
+        if (credits === 30) value = 9.99;
+        if (credits === 100) value = 19.99;
+
+        // Si on a identifié un achat, on l'envoie à Facebook
+        if (value > 0) {
+            fbq('track', 'Purchase', {
+                value: value,
+                currency: 'EUR',
+                content_name: 'Pack ' + credits + ' Crédits'
+            });
+        }
+    }
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=2165457157319732&ev=PageView&noscript=1"
+    /></noscript>
+    </head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <div class="logo">✨ StyleLab AI</div>
+            
+            <div class="header-actions">
+                <div id="creditCounter" style="font-weight: 600; color: #4b5563; background: #fff; padding: 8px 16px; border-radius: 50px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 1px solid #f3f4f6;">
+                    <span id="creditsLeft" style="color: var(--primary-color); font-weight: 800;">3</span> crédits
+                </div>
+                
+                <button onclick="openPricing()" class="buy-btn">
+                    <span class="material-icons-round" style="font-size: 18px;">diamond</span>
+                    RECHARGER
+                </button>
+            </div>
+        </header>
+
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 style="font-size: 2.5rem; color: #1e293b; margin-bottom: 15px; letter-spacing: -1px; line-height: 1.1;">
+                Essayez vos vêtements, <span style="color: #6366f1;">virtuellement.</span>
+            </h1>
+            <p style="color: #64748b; font-size: 1.1rem; max-width: 600px; margin: 0 auto;">
+                Notre IA adapte n'importe quel vêtement à votre morphologie en haute définition.
+            </p>
+        </div>
+
+        <div class="app-grid">
+            <div class="card input-section">
+                <h2>1. Studio de Création</h2>
+                
+                <div class="uploads-wrapper">
+                    <div class="upload-box">
+                        <div class="icon-header"><span class="material-icons-round">face</span><span>Votre Photo</span></div>
+                        <div class="preview-area" onclick="document.getElementById('userImage').click()">
+                            <img id="userPreview" class="preview-img" style="display:none;">
+                            <div class="placeholder" id="userPlaceholder">
+                                <span class="material-icons-round">add_a_photo</span><p>Ajouter</p>
+                            </div>
+                        </div>
+                        <input type="file" id="userImage" accept="image/*" onchange="previewImage('userImage','userPreview', 'userPlaceholder')" hidden>
+                    </div>
+
+                    <div class="upload-box">
+                        <div class="icon-header"><span class="material-icons-round">checkroom</span><span>Article</span></div>
+                        <div class="preview-area" onclick="document.getElementById('clothingImage').click()">
+                            <img id="clothingPreview" class="preview-img" style="display:none;">
+                            <div class="placeholder" id="clothingPlaceholder">
+                                <span class="material-icons-round">add_a_photo</span><p>Ajouter</p>
+                            </div>
+                        </div>
+                        <input type="file" id="clothingImage" accept="image/*" onchange="previewImage('clothingImage','clothingPreview', 'clothingPlaceholder')" hidden>
+                    </div>
+                </div>
+
+                <div class="options-row">
+                    <label for="categorySelect">Catégorie :</label>
+                    <select id="categorySelect">
+                        <option value="upper_body">Haut (T-shirt, Pull, Chemise)</option>
+                        <option value="lower_body">Bas (Pantalon, Short, Jupe)</option>
+                        <option value="dresses">Robe / Combinaison</option>
+                    </select>
+                </div>
+
+                <button id="generateButton" onclick="startTryOn()">
+                    <span class="material-icons-round">auto_awesome</span>
+                    Voir mon essayage magique ✨
+                </button>
+                
+                <div id="loadingMessage" style="display:none;">
+                    <div class="spinner"></div>
+                    <ul id="loadingSteps" style="list-style: none; padding: 0; margin-top: 15px; font-size: 0.9rem; color: #555; font-weight: 500;">
+                        <li>🚀 Analyse de la morphologie...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card result-section">
+                <h2>2. Résultat HD</h2>
+                <div class="result-container">
+                    <img id="resultImage" style="display:none;">
+                    <div id="resultPlaceholder" class="empty-state">
+                        <span class="material-icons-round">image</span>
+                        <p>Le résultat apparaîtra ici</p>
+                    </div>
+                    <a id="downloadLink" class="download-btn" style="display:none;" download="tryon_result_hd.png">
+                        <span class="material-icons-round">download</span> Télécharger HD
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pricingModal" class="modal-overlay" style="display:none;">
+        <button class="close-btn" onclick="closePricing()">&times;</button>
+        <div class="modal-content">
+            <h2>💎 Rechargez vos crédits</h2>
+            <p>Payez uniquement ce que vous consommez.</p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="card-info">
+                        <h3>DÉCOUVERTE</h3>
+                        <div class="price">4.99€</div>
+                        <div class="credits">10 Crédits</div>
+                    </div>
+                    <button onclick="buyPack('pack_10')">Choisir</button>
+                </div>
+
+                <div class="pricing-card popular">
+                    <div class="badge">LE MEILLEUR</div>
+                    <div class="card-info">
+                        <h3>CRÉATEUR</h3>
+                        <div class="price">9.99€</div>
+                        <div class="credits">30 Crédits</div>
+                    </div>
+                    <button onclick="buyPack('pack_30')">Choisir</button>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="card-info">
+                        <h3>AGENCE</h3>
+                        <div class="price">19.99€</div>
+                        <div class="credits">100 Crédits</div>
+                    </div>
+                    <button onclick="buyPack('pack_100')">Choisir</button>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; font-size: 0.8rem; color: #94a3b8;">
+                Paiement sécurisé par Stripe.
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
