@@ -31,7 +31,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     # ⚠️ Mettez l'URL de votre frontend Netlify et l'URL de votre backend Render ici pour la sécurité
-    allow_origins=["https://tryonia.netlify.app", "https://votre-lien-render.onrender.com"],
+    allow_origins=["https://tryonia.netlify.app", "https://tryonquimarche.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -144,4 +144,5 @@ async def read_index(): return FileResponse("index.html")
 # Le bloc uvicorn sera ignoré par Render, mais on le laisse pour les tests locaux
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=3000)
