@@ -16,7 +16,7 @@ const CLOUDINARY_FETCH_URL = 'https://api.cloudinary.com/v1_1/dbhxjrj8c/image/up
 
 // --- 2. GESTION CRÉDITS ---
 // J'ai remis 50 crédits pour faciliter votre test
-let credits = parseInt(localStorage.getItem('credits') || '50');
+let credits = parseInt(localStorage.getItem('credits') || '3');
 
 window.onload = function() {
     const urlParams = new URLSearchParams(window.location.search);
