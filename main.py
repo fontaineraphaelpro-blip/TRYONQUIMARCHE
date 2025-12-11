@@ -31,7 +31,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     # ⚠️ Mettez l'URL de votre frontend Netlify et l'URL de votre backend Render ici pour la sécurité
-    allow_origins=["https://tryonia.netlify.app", "https://tryonquimarche.onrender.com"],
+    allow_origins=["https://tryonia.netlify.app", "https://tryonquimarche-1.onrender.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -146,4 +146,5 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=3000)
+
 
