@@ -1,5 +1,5 @@
 // --- 1. CONFIGURATION ---
-const BASE_URL = 'https://tryonquimarche.onrender.com';
+const BASE_URL = 'https://tryonquimarche-1.onrender.com';
 
 const API_ENDPOINT = `${BASE_URL}/api/v1/generate-tryon`;
 const PAYMENT_ENDPOINT = `${BASE_URL}/api/v1/create-checkout-session`;
