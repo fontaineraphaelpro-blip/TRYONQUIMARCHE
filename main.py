@@ -110,7 +110,7 @@ def generate_tryon(request_data: TryOnRequest):
                 "garment_des": REALISTIC_PROMPT, 
                 "category": request_data.category,
                 # Augmentation des étapes pour une meilleure qualité (COÛT PLUS ÉLEVÉ)
-                "steps": 75, 
+                "steps": 40, 
                 "crop": False, 
                 "seed": 42
             }
@@ -159,3 +159,4 @@ def read_file(filename: str):
     if filename in ["main.py", "requirements.txt", "start.sh", ".env"]:
         raise HTTPException(status_code=403, detail="Accès interdit")
     return get_static_file(filename)
+
