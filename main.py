@@ -8,11 +8,15 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# --- 1. CONFIGURATION ---
+# --- 1. CONFIGURATION (VARIABLES D'ENVIRONNEMENT RENDER) ---
 
+# Replicate lit directement la variable d'environnement (REPLICATE_API_TOKEN)
 os.environ["REPLICATE_API_TOKEN"] = os.getenv("REPLICATE_API_TOKEN")
+
+# Stripe lit la clé secrète depuis l'environnement
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+# Cloudinary lit les identifiants depuis l'environnement
 cloudinary.config(
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key = os.getenv("CLOUDINARY_API_KEY"),
@@ -23,123 +27,129 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://tryonia.netlify.app", "https://tryonquimarche.onrender.com"],
+    # Autorise tout le monde (Netlify, Localhost)
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- 2. MODÈLES ---
+
+# --- 2. MODÈLES DE DONNÉES ---
+
 class TryOnRequest(BaseModel):
     person_image_url: str
     clothing_image_url: str
-    category: str = "upper_body"
+    category: str # Note: Flux gère souvent la catégorie automatiquement, mais on garde le champ
     user_id: str
     security_key: str
 
-class PaymentRequest(BaseModel):
+class CheckoutRequest(BaseModel):
     pack_id: str
+    success_url: str
+    cancel_url: str
 
-# --- 3. PACKS ---
-PACKS = {
-    "pack_10": {"name": "10 Crédits IA", "amount": 499, "credits": 10},
-    "pack_30": {"name": "30 Crédits IA", "amount": 999, "credits": 30},
-    "pack_100": {"name": "100 Crédits IA", "amount": 1999, "credits": 100}
-}
 
-# --- 4. ROUTES API ---
+# --- 3. ROUTES STRIPE (PAIEMENT) ---
 
 @app.post("/api/v1/create-checkout-session")
-def create_checkout_session(request: PaymentRequest):
+def create_checkout_session(request_data: CheckoutRequest):
+    # Configuration des packs
+    packs = {
+        "pack_10": {"price_id": os.getenv("STRIPE_PRICE_ID_10"), "credits": 10},
+        "pack_30": {"price_id": os.getenv("STRIPE_PRICE_ID_30"), "credits": 30},
+        "pack_100": {"price_id": os.getenv("STRIPE_PRICE_ID_100"), "credits": 100},
+    }
+
+    if request_data.pack_id not in packs:
+        raise HTTPException(status_code=400, detail="Pack ID invalide.")
+
+    pack_info = packs[request_data.pack_id]
+    
+    # Construction de l'URL de succès
+    success_url_with_credits = f"{request_data.success_url}?success=true&add_credits={pack_info['credits']}"
+
     try:
-        pack = PACKS.get(request.pack_id)
-        if not pack:
-            raise HTTPException(status_code=400, detail="Pack inconnu")
-
-        YOUR_DOMAIN = "https://tryonia.netlify.app"
-        success_url = f"{YOUR_DOMAIN}/?success=true&add_credits={pack['credits']}"
-
         checkout_session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            line_items=[{
-                'price_data': {
-                    'currency': 'eur',
-                    'product_data': {'name': pack['name']},
-                    'unit_amount': pack['amount'],
+            line_items=[
+                {
+                    'price': pack_info["price_id"],
+                    'quantity': 1,
                 },
-                'quantity': 1,
-            }],
+            ],
             mode='payment',
-            success_url=success_url,
-            cancel_url=YOUR_DOMAIN + '/?canceled=true',
+            success_url=success_url_with_credits,
+            cancel_url=request_data.cancel_url,
         )
         return {"url": checkout_session.url}
     except Exception as e:
-        print(f"Erreur Stripe : {e}")
+        print(f"Erreur Stripe: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- 4. ROUTE AI (TRY-ON AVEC CatVTON-Flux) ---
 
 @app.post("/api/v1/generate-tryon")
 def generate_tryon(request_data: TryOnRequest):
+    # Vérification de sécurité
     if request_data.security_key != "MOT_DE_PASSE_TRES_SECRET_A_METTRE_AUSSI_DANS_BUBBLE":
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
-    # ✨ PROMPT AMÉLIORÉ : C'est ici que se joue le réalisme
-    # On ajoute des mots clés pour la texture et la lumière
-    REALISTIC_PROMPT = "photorealistic, high quality, highly detailed, realistic texture, 4k, studio lighting, raw photo, vivid colors"
-
     try:
-        # 1. Try-On (Replicate)
-        print("Lancement Replicate avec images :")
-        print(f"Humain: {request_data.person_image_url}")
-        print(f"Vêtement: {request_data.clothing_image_url}")
+        print("🚀 Lancement de CatVTON-Flux...")
 
-        output_vton = replicate.run(
-            "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
+        # Appel au modèle mmezhov/catvton-flux
+        output_flux = replicate.run(
+            "mmezhov/catvton-flux:cc41d1b963023987ed2ddf26e9264efcc96ee076640115c303f95b0010f6a958",
             input={
-                "human_img": request_data.person_image_url,
-                "garm_img": request_data.clothing_image_url,
-                "garment_des": REALISTIC_PROMPT, # ✅ Utilisation du prompt riche
-                "category": request_data.category,
-                "steps": 30, 
-                "crop": False, # ✅ On garde le crop pour éviter l'écrasement
-                "seed": 42# "seed": 42  <-- ❌ J'ai retiré le seed pour avoir des variations plus naturelles
+                "image": request_data.person_image_url,     # L'image de la personne
+                "garment": request_data.clothing_image_url, # L'image du vêtement
+                "num_steps": 30,       # 30 étapes : bon équilibre qualité/vitesse pour Flux
+                "guidance_scale": 3.5, # Réglage recommandé pour le réalisme
+                "seed": 42,
+                "width": 768,          # Résolution standard Flux (Portrait)
+                "height": 1024
             }
         )
+        
+        # Gestion du format de réponse de Replicate (parfois liste, parfois objet)
+        raw_output = output_flux[0] if isinstance(output_flux, list) else output_flux
+        final_url = str(raw_output)
+        
+        print(f"✅ Génération terminée par Replicate : {final_url}")
 
-        # 🛑 PROTECTION CRITIQUE
-        if not output_vton or (isinstance(output_vton, list) and len(output_vton) == 0):
-            print("❌ Replicate a retourné une liste vide (FAILED).")
-            raise Exception("L'IA a échoué (Status FAILED). Vérifiez que la photo contient bien une personne visible.")
-
-        # Récupération sécurisée
-        if isinstance(output_vton, list):
-            final_url = str(output_vton[0])
-        else:
-            final_url = str(output_vton)
-
-        # 2. Cloudinary (Direct)
-        print(f"Succès Replicate. Upload vers Cloudinary...")
+        # Upload vers Cloudinary pour stocker le résultat de manière fiable
         upload = cloudinary.uploader.upload(final_url, folder="tryon_hd")
         
         return {"result_image_url": upload["secure_url"]}
 
     except Exception as e:
-        print(f"❌ ERREUR GENERALE : {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Echec IA: {str(e)}")
+        print(f"❌ ERREUR REPLICATE/CLOUDINARY : {str(e)}")
+        # Astuce : Regardez les logs Render si une erreur 500 apparaît
+        raise HTTPException(status_code=500, detail=f"Erreur IA: {str(e)}")
 
-# --- 5. SERVIR LE SITE WEB ---
 
-@app.get("/styles.css")
-async def get_css(): return FileResponse("styles.css")
+# --- 5. SERVIR LE SITE WEB (FICHIERS STATIQUES) ---
 
-@app.get("/app.js")
-async def get_js(): return FileResponse("app.js")
+def get_static_file(filename: str):
+    file_path = os.path.join(os.getcwd(), filename)
+    if os.path.exists(file_path):
+        if filename.endswith(".js"):
+            media_type = "application/javascript"
+        elif filename.endswith(".css"):
+            media_type = "text/css"
+        else:
+            media_type = None
+        return FileResponse(file_path, media_type=media_type)
+    raise HTTPException(status_code=404, detail="Fichier non trouvé")
 
 @app.get("/")
-async def read_index(): return FileResponse("index.html")
+def read_root():
+    return get_static_file("index.html")
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=3000)
-
-
+@app.get("/{filename}")
+def read_file(filename: str):
+    # Sécurité : on empêche de lire le code source python ou les envs
+    if filename in ["main.py", "requirements.txt", "start.sh", ".env", ".gitignore"]:
+        raise HTTPException(status_code=403, detail="Accès interdit")
+    return get_static_file(filename)
