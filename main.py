@@ -33,7 +33,7 @@ app.add_middleware(
 class TryOnRequest(BaseModel):
     person_image_url: str
     clothing_image_url: str
-    category: str = "upper_body" # Valeurs attendues par OOT: 'upper_body', 'lower_body', 'dress'
+    category: str = "upper_body"
     user_id: str
     security_key: str
 
@@ -84,40 +84,37 @@ def generate_tryon(request_data: TryOnRequest):
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
     try:
-        # --- 1. Lancement OOTDiffusion (SOTA Model) ---
-        print(f"Lancement OOTDiffusion...")
-        
-        # Mapping des catégories pour OOTDiffusion
-        # Le frontend envoie 'dresses', mais OOT attend souvent 'dress' (singulier)
-        oot_category = request_data.category
-        if oot_category == "dresses":
-            oot_category = "dress"
-            
+        # 1. Try-On (Replicate)
+        print("Lancement Replicate avec images :")
+        print(f"Humain: {request_data.person_image_url}")
+        print(f"Vêtement: {request_data.clothing_image_url}")
+
         output_vton = replicate.run(
-            "viktorfa/oot_diffusion:9f8fa4956970dde99689af7488157a30aa152e23953526a605df1d77598343d7",
+            "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input={
-                "model_image": request_data.person_image_url,  # ✅ Nom correct pour OOT
-                "cloth_image": request_data.clothing_image_url, # ✅ Nom correct pour OOT
-                "category": oot_category,                       # ✅ Ajout critique manquant dans ton code
-                "steps": 20,       # 20 est optimal pour OOT
-                "guidance_scale": 2,
+                "human_img": request_data.person_image_url,
+                "garm_img": request_data.clothing_image_url,
+                "garment_des": "clothing", 
+                "category": request_data.category,
+                "steps": 40, 
+                "crop": True,  # ⚠️ CHANGEMENT ICI : True pour éviter d'aplatir l'image
                 "seed": 42
             }
         )
 
-        # 🛑 PROTECTION : Vérification du résultat
+        # 🛑 PROTECTION CRITIQUE
         if not output_vton or (isinstance(output_vton, list) and len(output_vton) == 0):
-            print("❌ OOTDiffusion a échoué (Liste vide).")
-            raise Exception("L'IA n'a pas réussi à générer l'image. (Vérifiez le cadrage photo).")
+            print("❌ Replicate a retourné une liste vide (FAILED).")
+            raise Exception("L'IA a échoué (Status FAILED). Vérifiez que la photo contient bien une personne visible.")
 
-        # Récupération de l'URL
+        # Récupération sécurisée
         if isinstance(output_vton, list):
             final_url = str(output_vton[0])
         else:
             final_url = str(output_vton)
 
-        # --- 2. Cloudinary (Direct, Upscale retiré pour stabilité) ---
-        print(f"Succès IA. Upload vers Cloudinary...")
+        # 2. Cloudinary (Direct)
+        print(f"Succès Replicate. Upload vers Cloudinary...")
         upload = cloudinary.uploader.upload(final_url, folder="tryon_hd")
         
         return {"result_image_url": upload["secure_url"]}
