@@ -30,7 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- 2. MODÈLES DE DONNÉES ---
+# --- 2. MODÈLES DE DONNÉES (CORRIGÉ POUR ACCEPTER L'ANCIEN FORMAT) ---
 
 class TryOnRequest(BaseModel):
     person_image_url: str
@@ -41,15 +41,17 @@ class TryOnRequest(BaseModel):
 
 class CheckoutRequest(BaseModel):
     pack_id: str
-    success_url: str
-    cancel_url: str
+    # 👇 MODIFICATION MAGIQUE :
+    # On met des valeurs par défaut. Comme ça, si ton app.js n'envoie rien, ça ne plante pas !
+    # Remplace l'URL ci-dessous par la tienne si elle change.
+    success_url: str = "https://tryonia.netlify.app"
+    cancel_url: str = "https://tryonia.netlify.app"
 
-# --- 3. ROUTES STRIPE (CORRIGÉE : PRIX DIRECTS) ---
+# --- 3. ROUTES STRIPE (PRIX DIRECTS + COMPATIBILITÉ) ---
 
 @app.post("/api/v1/create-checkout-session")
 def create_checkout_session(request_data: CheckoutRequest):
-    # DÉFINITION DES PRIX DIRECTEMENT ICI (EN CENTIMES)
-    # Plus besoin de variables d'environnement pour les ID de prix
+    # DÉFINITION DES PRIX EN DUR (Pour éviter les erreurs de configuration Render)
     packs = {
         "pack_10":  {"amount": 499,  "credits": 10,  "name": "Pack Découverte (10 Crédits)"},
         "pack_30":  {"amount": 999,  "credits": 30,  "name": "Pack Créateur (30 Crédits)"},
@@ -61,26 +63,27 @@ def create_checkout_session(request_data: CheckoutRequest):
 
     pack_info = packs[request_data.pack_id]
     
-    # Construction URL succès
-    success_url_with_credits = f"{request_data.success_url}?success=true&add_credits={pack_info['credits']}"
+    # Construction URL succès avec les crédits
+    # Si le frontend a envoyé une URL spécifique, on l'utilise, sinon on prend celle par défaut
+    final_success_url = f"{request_data.success_url}?success=true&add_credits={pack_info['credits']}"
 
     try:
         checkout_session = stripe.checkout.Session.create(
             line_items=[
                 {
-                    # On utilise 'price_data' pour définir le prix à la volée
+                    # On définit le prix ici pour ne pas dépendre des ID Stripe
                     'price_data': {
                         'currency': 'eur',
                         'product_data': {
                             'name': pack_info['name'],
                         },
-                        'unit_amount': pack_info['amount'], # Montant en centimes (ex: 499 = 4.99€)
+                        'unit_amount': pack_info['amount'], # 499 = 4.99€
                     },
                     'quantity': 1,
                 },
             ],
             mode='payment',
-            success_url=success_url_with_credits,
+            success_url=final_success_url,
             cancel_url=request_data.cancel_url,
         )
         return {"url": checkout_session.url}
@@ -88,7 +91,7 @@ def create_checkout_session(request_data: CheckoutRequest):
         print(f"Erreur Stripe: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 4. ROUTE AI (IDM-VTON STANDARD) ---
+# --- 4. ROUTE AI (IDM-VTON CUPID - RAPIDE & STABLE) ---
 
 @app.post("/api/v1/generate-tryon")
 def generate_tryon(request_data: TryOnRequest):
@@ -96,9 +99,9 @@ def generate_tryon(request_data: TryOnRequest):
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
     try:
-        print("🚀 Lancement IDM-VTON...")
+        print("🚀 Lancement IDM-VTON (Standard)...")
 
-        # Modèle Cupid IDM-VTON (Stable & Rapide)
+        # Le modèle Cupid : Rapide (15s) et fiable
         output_vton = replicate.run(
             "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input={
@@ -112,6 +115,7 @@ def generate_tryon(request_data: TryOnRequest):
             }
         )
         
+        # Gestion de la sortie
         raw_output = output_vton[0] if isinstance(output_vton, list) else output_vton
         final_url = str(raw_output)
         
