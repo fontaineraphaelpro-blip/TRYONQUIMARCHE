@@ -27,7 +27,6 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    # Autorise tout le monde (Netlify, Localhost)
     allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
@@ -40,7 +39,7 @@ app.add_middleware(
 class TryOnRequest(BaseModel):
     person_image_url: str
     clothing_image_url: str
-    category: str # Note: Flux gère souvent la catégorie automatiquement, mais on garde le champ
+    category: str 
     user_id: str
     security_key: str
 
@@ -50,11 +49,10 @@ class CheckoutRequest(BaseModel):
     cancel_url: str
 
 
-# --- 3. ROUTES STRIPE (PAIEMENT) ---
+# --- 3. ROUTES STRIPE ---
 
 @app.post("/api/v1/create-checkout-session")
 def create_checkout_session(request_data: CheckoutRequest):
-    # Configuration des packs
     packs = {
         "pack_10": {"price_id": os.getenv("STRIPE_PRICE_ID_10"), "credits": 10},
         "pack_30": {"price_id": os.getenv("STRIPE_PRICE_ID_30"), "credits": 30},
@@ -66,7 +64,6 @@ def create_checkout_session(request_data: CheckoutRequest):
 
     pack_info = packs[request_data.pack_id]
     
-    # Construction de l'URL de succès
     success_url_with_credits = f"{request_data.success_url}?success=true&add_credits={pack_info['credits']}"
 
     try:
@@ -87,49 +84,55 @@ def create_checkout_session(request_data: CheckoutRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- 4. ROUTE AI (TRY-ON AVEC CatVTON-Flux) ---
+# --- 4. ROUTE AI (TRY-ON AVEC FLUX FILL REDUX) ---
 
 @app.post("/api/v1/generate-tryon")
 def generate_tryon(request_data: TryOnRequest):
-    # Vérification de sécurité
     if request_data.security_key != "MOT_DE_PASSE_TRES_SECRET_A_METTRE_AUSSI_DANS_BUBBLE":
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
     try:
-        print("🚀 Lancement de CatVTON-Flux...")
+        print("🚀 Lancement de Flux-Fill-Redux Try-On...")
 
-        # Appel au modèle mmezhov/catvton-flux
+        # MAPPING DES CATÉGORIES
+        # Votre frontend envoie "upper_body", "lower_body", "dresses"
+        # Ce modèle attend "upper", "lower", "overall"
+        cloth_type_mapped = "upper"
+        if "lower" in request_data.category:
+            cloth_type_mapped = "lower"
+        elif "dress" in request_data.category or "overall" in request_data.category:
+            cloth_type_mapped = "overall"
+
+        # Appel au modèle cedoysch/flux-fill-redux-try-on
+        # Pas de hf_token requis selon la doc de ce wrapper
         output_flux = replicate.run(
-            "mmezhov/catvton-flux:cc41d1b963023987ed2ddf26e9264efcc96ee076640115c303f95b0010f6a958",
+            "cedoysch/flux-fill-redux-try-on:cf5cb07a25e726fe2fac166a8c5ab52ddccd48657741670fb09d9954d4d8446f",
             input={
-                "image": request_data.person_image_url,     # L'image de la personne
-                "garment": request_data.clothing_image_url, # L'image du vêtement
-                "num_steps": 30,       # 30 étapes : bon équilibre qualité/vitesse pour Flux
-                "guidance_scale": 3.5, # Réglage recommandé pour le réalisme
-                "seed": 42,
-                "width": 768,          # Résolution standard Flux (Portrait)
-                "height": 1024
+                "person_image": request_data.person_image_url,
+                "cloth_image": request_data.clothing_image_url,
+                "cloth_type": cloth_type_mapped,
+                "output_quality": 100, # Qualité max pour le réalisme
+                "output_format": "png"
             }
         )
         
-        # Gestion du format de réponse de Replicate (parfois liste, parfois objet)
+        # Gestion de la sortie
         raw_output = output_flux[0] if isinstance(output_flux, list) else output_flux
         final_url = str(raw_output)
         
-        print(f"✅ Génération terminée par Replicate : {final_url}")
+        print(f"✅ Génération terminée : {final_url}")
 
-        # Upload vers Cloudinary pour stocker le résultat de manière fiable
+        # Upload vers Cloudinary
         upload = cloudinary.uploader.upload(final_url, folder="tryon_hd")
         
         return {"result_image_url": upload["secure_url"]}
 
     except Exception as e:
-        print(f"❌ ERREUR REPLICATE/CLOUDINARY : {str(e)}")
-        # Astuce : Regardez les logs Render si une erreur 500 apparaît
+        print(f"❌ ERREUR REPLICATE : {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erreur IA: {str(e)}")
 
 
-# --- 5. SERVIR LE SITE WEB (FICHIERS STATIQUES) ---
+# --- 5. SERVIR LE SITE WEB ---
 
 def get_static_file(filename: str):
     file_path = os.path.join(os.getcwd(), filename)
@@ -149,7 +152,6 @@ def read_root():
 
 @app.get("/{filename}")
 def read_file(filename: str):
-    # Sécurité : on empêche de lire le code source python ou les envs
     if filename in ["main.py", "requirements.txt", "start.sh", ".env", ".gitignore"]:
         raise HTTPException(status_code=403, detail="Accès interdit")
     return get_static_file(filename)
