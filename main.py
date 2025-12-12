@@ -100,7 +100,7 @@ def generate_tryon(request_data: TryOnRequest):
                 "garm_img": request_data.clothing_image_url,
                 "garment_des": REALISTIC_PROMPT, # ✅ Utilisation du prompt riche
                 "category": request_data.category,
-                "steps": 40, 
+                "steps": 30, 
                 "crop": False, # ✅ On garde le crop pour éviter l'écrasement
                 "seed": 42# "seed": 42  <-- ❌ J'ai retiré le seed pour avoir des variations plus naturelles
             }
@@ -141,4 +141,5 @@ async def read_index(): return FileResponse("index.html")
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=3000)
+
 
