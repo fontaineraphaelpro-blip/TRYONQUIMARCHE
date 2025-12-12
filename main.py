@@ -83,6 +83,10 @@ def generate_tryon(request_data: TryOnRequest):
     if request_data.security_key != "MOT_DE_PASSE_TRES_SECRET_A_METTRE_AUSSI_DANS_BUBBLE":
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
+    # ✨ PROMPT AMÉLIORÉ : C'est ici que se joue le réalisme
+    # On ajoute des mots clés pour la texture et la lumière
+    REALISTIC_PROMPT = "photorealistic, high quality, highly detailed, realistic texture, 4k, studio lighting, raw photo, vivid colors"
+
     try:
         # 1. Try-On (Replicate)
         print("Lancement Replicate avec images :")
@@ -94,11 +98,11 @@ def generate_tryon(request_data: TryOnRequest):
             input={
                 "human_img": request_data.person_image_url,
                 "garm_img": request_data.clothing_image_url,
-                "garment_des": "clothing", 
+                "garment_des": REALISTIC_PROMPT, # ✅ Utilisation du prompt riche
                 "category": request_data.category,
                 "steps": 40, 
-                "crop": True,  # ⚠️ CHANGEMENT ICI : True pour éviter d'aplatir l'image
-                "seed": 42
+                "crop": True, # ✅ On garde le crop pour éviter l'écrasement
+                # "seed": 42  <-- ❌ J'ai retiré le seed pour avoir des variations plus naturelles
             }
         )
 
