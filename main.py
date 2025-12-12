@@ -72,7 +72,7 @@ def create_checkout_session(request_data: CheckoutRequest):
         print(f"Erreur Stripe: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- 4. ROUTE AI (OOTDiffusion) ---
+# --- 4. ROUTE AI (RETOUR À CUPID IDM-VTON) ---
 
 @app.post("/api/v1/generate-tryon")
 def generate_tryon(request_data: TryOnRequest):
@@ -80,23 +80,25 @@ def generate_tryon(request_data: TryOnRequest):
         raise HTTPException(status_code=403, detail="Clé de sécurité invalide.")
 
     try:
-        print("🚀 Lancement de OOTDiffusion (viktorfa)...")
+        print("🚀 Lancement IDM-VTON (Cupid)...")
 
-        # Utilisation du modèle OOTDiffusion demandé
-        # Note : Ce modèle est excellent pour le "fitting" naturel
-        output_ootd = replicate.run(
-            "viktorfa/oot_diffusion:9f8fa4956970dde99689af7488157a30aa152e23953526a605df1d77598343d7",
+        # Le modèle fiable et rapide.
+        output_vton = replicate.run(
+            "cuuupid/idm-vton:0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input={
-                "model_image": request_data.person_image_url,
-                "garment_image": request_data.clothing_image_url,
-                "steps": 20,       # 20 est le réglage standard (rapide et propre)
-                "guidance_scale": 2,
+                "human_img": request_data.person_image_url,
+                "garm_img": request_data.clothing_image_url,
+                # Prompt optimisé pour la netteté sans être trop long
+                "garment_des": "high quality, photorealistic, sharp focus", 
+                "category": request_data.category,
+                "steps": 30, # Le réglage parfait pour la vitesse/qualité
+                "crop": False, 
                 "seed": 42
             }
         )
         
-        # Gestion de la sortie (OOTD renvoie souvent une liste)
-        raw_output = output_ootd[0] if isinstance(output_ootd, list) else output_ootd
+        # Gestion de la sortie
+        raw_output = output_vton[0] if isinstance(output_vton, list) else output_vton
         final_url = str(raw_output)
         
         print(f"✅ Génération terminée : {final_url}")
@@ -106,7 +108,6 @@ def generate_tryon(request_data: TryOnRequest):
 
     except Exception as e:
         print(f"❌ ERREUR IA : {str(e)}")
-        # Si vous voyez une erreur ici, vérifiez les logs Render
         raise HTTPException(status_code=500, detail=f"Erreur modèle IA: {str(e)}")
 
 # --- 5. FICHIERS STATIQUES ---
